@@ -6,7 +6,7 @@ Hello! Welcome to my wireless camera project! I got the idea for a wireless came
 that there was no one recording youth sports games in the Minnesota Area. Well, not entirely true, there are
 companys that will record youth games, but they have a 3 man crew and charge outragous prices to do so. So now
 that I have the Embedded Systems skills from  my time at MSOE, its time to wirelessly control cameras with
-a controller and perform the task of 3 people with 1. T
+a controller and perform the task of 3 people with 1. 
 
 What Microcontroller did I use? I decided on the arduino uno/mega2560 boards for this project. Arduinos easy 
 to use IDE and the fact that they have a large library import class makes the platform optimal for creating
