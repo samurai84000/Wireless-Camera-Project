@@ -1,0 +1,161 @@
+// SimpleRx - the slave or the receiver
+
+/*This is the documentation for right peripheral camera.
+*/
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <Servo.h>
+
+#define CE_PIN   9
+#define CSN_PIN 53
+#define panPin 7
+
+const byte thisSlaveAddress[5] = {'R','x','A','A','A'};
+
+
+RF24 radio(CE_PIN, CSN_PIN);
+
+char dataReceived[10]; // this must match dataToSend in the TX
+int data[10]; //the data line being sent to peripherals through NRF24l01
+String temp = ""; //temp string placeholder for contatenation on global level
+String convert = ""; //temporary string used to hold the ASCII characters read from the NRF24l01
+
+int panM = 90; //pan degree's
+int tiltM = 90; //tilt degree's.
+
+int panR = 90; //right cameras pan degree's used for debugging
+int tiltR = 90;//right cameras tilt degree's used for debugging
+bool newData = false;//part of the RF24 library used to detect whether or not new information can be read
+
+
+int height = 12;// base height of the tripod, how hight the camera is in the air
+
+
+Servo pan; //The Pan Servo
+Servo tilter;//The Tilt Servo.
+
+//===========
+
+
+//Setting up the arduino
+void setup() {
+    Serial.begin(9600);
+    pan.attach(panPin);
+    tilter.attach(5);
+    Serial.println("SimpleRx Starting");
+    radio.begin();
+    radio.setDataRate( RF24_250KBPS );
+   
+}
+
+//=============
+
+void loop() {
+    getPanData();
+    showPanData();
+    servoReadManagement();
+    
+    delay(2);
+  
+}
+
+//==============
+
+void getPanData() {
+  radio.openReadingPipe(1, thisSlaveAddress);
+    radio.startListening();
+    if ( radio.available() ) {
+        radio.read( &dataReceived, sizeof(dataReceived) );
+        Serial.println(dataReceived);
+        newData = true;
+    }
+}
+
+//debugging method used to show the current
+//angle of pan
+void showPanData() {
+ 
+    if (newData == true) {
+        conversion();
+        newData = false;
+      }
+}
+//this method is used to convert the ASCII
+//digits read from the NRF24l01 into their 
+//int counterparts to be read and calculated
+//by the servos.
+int conversion(){
+  temp = "";
+  int servoCoord = 90;
+        for(int i = 0; i < 3; i++){
+          temp = temp + dataReceived[i];
+        }
+        convert = "";
+        for(int i = 0 ; i < temp.length(); i++){
+            if(isDigit(temp.charAt(i))){
+              convert = convert + temp.charAt(i);
+            }
+        }
+
+        servoCoord = convert.toInt();
+        if(servoCoord > 130){
+          servoCoord = servoCoord / 10;
+        }
+        return servoCoord;
+}
+
+
+//the method reads the wirless
+//databus in the NRF24l01 and then
+//proceeds to send that information to the rest 
+//of the system
+void servoReadManagement(){
+  char servoChar = 'r';
+
+  for(int i = 0; i <= 4; i++){
+      if(dataReceived[i] == 'P'){
+        servoChar = 'P';
+      } else{
+        servoChar = 'T';
+      }
+  }
+  
+  if(servoChar == 'P'){
+    panM = conversion();
+    Serial.print("PAN COORD = ");
+    Serial.println(panM);
+    Serial.println(getPanR());
+
+    panM = conversion();
+
+    pan.write(getPanR());
+    delay(1);
+  } else if(servoChar == 'T'){
+    tiltM = conversion();
+    Serial.print("TILT COORD = ");
+    Serial.println(tiltM);
+    
+    
+    tilter.write(getTiltR());
+
+    delay(1);
+    
+  }
+}
+
+
+
+double getTiltR(){
+  //return atan(radians(sqrt(sq(height * tan(radians(tilt))) + 2500 - (2 * (height * tan(radians(tilt))) * 50 * cos(radians(coord)))) / height));
+  return 90;
+}
+
+int getPanR(){
+  double x = 12 * tan (radians(tiltM));
+  double rightCameraLength = sqrt(sq(x) + sq(50) - 2 * x * 50 * cos(radians(panM)));
+  double equation = x * sin(tiltM) / rightCameraLength;
+  double panR = degrees(asin(equation));
+  return panR;
+}
+
